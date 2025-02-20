@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!--StAuth10244: I Luan Trang, 000341618 certify that this material is my original work. No other person's work has been used without due acknowledgement.
+//I have not made my work available to anyone else. -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <title> Map of Electric Vehicle Charging Stations in Hamilton</title>
+    <style>
+        h2,h3,h4
+        {
+            text-align: center;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        body 
+        {
+            background-image: url("img/greengradient.jpg");
+            background-size: cover;
+            background-position: center; 
+            background-repeat: no-repeat; 
+        }
+        #map 
+        {
+           display: block;
+            margin: auto;
+            height: 700px;
+            width: 700px;
+            margin-top: 50px;
+              
+        }        
+        @media (max-width: 768px) {
+            #map {
+                    height: 300px;
+                    width: auto;
+            }
+        }
+        @media (max-width: 480px) {
+            #map {
+                height: 260px;
+                width: auto;
+            }
+        }
+        .buttons 
+        {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .buttons button {
+        margin: 0 10px;
+        }
+        .directions 
+        {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+        .addMarker 
+        {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .form-group 
+        {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Map of Electric Vehicle Charging Stations in Hamilton</h2>
+    <div class="form-group">
+    <input class="form-group" type="text" id="address" placeholder="Enter an address">
+    </div>
+    <div class="form-group">
+        <button type="button" class="btn btn-primary" id="markerCreated">Add Marker</button>
+    </div>
+    <div id="map"></div>
+    
+    <h4>Filter by Total Charging Ports</h4>
+    
+    <div class="buttons">
+        <div class="btn-group" role="group" aria-label="Button group with nested dropdown">
+            <button type="button" class="btn btn-primary" id="getLocation">Get Location</button>
+            <button type="button" class="btn btn-secondary" id="showAllMarkers">Show All Markers</button>
+    
+            <div class="btn-group" role="group">
+                <button id="btnGroupDrop1" type="button" class="btn btn-secondary btn-success dropdown-toggle" 
+                    data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    Filter by Ports
+                </button>
+                <div class="dropdown-menu" aria-labelledby="btnGroupDrop1">
+                    <a class="dropdown-item" href="#" id="2ports">2 Ports</a>
+                    <a class="dropdown-item" href="#" id="4ports">4 Ports</a>
+                    <a class="dropdown-item" href="#" id="8ports">More than 4 Ports</a>
+                </div>
+            </div>
+        </div>
+    </div>
+        <h2>Directions</h2>
+        <div class="form-row align-items-center">
+        <div class="col-auto">
+        <label for="destination">Choose a destination:</label>
+        <select class="form-control mb-2" id="destination">
+            <option value="">Select a destination</option>
+        </select>
+        <div class="form-group">
+        <button class="btn btn-primary mb-4" id="getDirections">Get Directions</button>
+        </div>
+
+    <script>
+        let markers = [];    
+        document.getElementById("getLocation").addEventListener("click",showPosition);
+        document.getElementById("2ports").addEventListener("click", () => filterPorts(2));
+        document.getElementById("4ports").addEventListener("click", () => filterPorts(4));
+        document.getElementById("8ports").addEventListener("click", () => filterPorts(9)); 
+        document.getElementById("showAllMarkers").addEventListener("click", showAllMarkers);
+        document.getElementById("getDirections").addEventListener("click", getDirections);
+        document.getElementById("markerCreated").addEventListener("click", addMarkerByAddress);
+        let myLocation;
+        function showPosition() 
+        {
+            navigator.geolocation.getCurrentPosition((position) => {
+            let lat = position.coords.latitude;
+            let lng = position.coords.longitude;
+            let user_location;
+            user_location= "http://maps.google.com/mapfiles/kml/shapes/poi.png"
+            const icon_user = document.createElement("img");
+            icon_user.src = user_location;
+            myLocation = new google.maps.marker.AdvancedMarkerElement({
+                map: map,
+                position: { lat: lat, lng: lng },
+                title: "My Location",
+                content: icon_user
+                
+            });
+            map.setCenter({ lat: lat, lng: lng });
+            map.setZoom(10);
+            });
+        }
+
+        function hideMarkers() {
+            markers.forEach(marker => {
+                marker.element.style.display = "none";
+        });
+        }
+        function showAllMarkers() {
+            markers.forEach(marker => {
+                marker.element.style.display = "block";
+        });
+        }
+
+        function filterPorts(ports) {
+            hideMarkers();
+            chargingStations.forEach(station => {
+
+                if (ports < 9) {
+                    if (station.totalChargingPorts == ports) {
+                        station.marker.element.style.display = "block";
+                    }
+                } else if (station.totalChargingPorts >= 6) {
+                     {
+                        station.marker.element.style.display = "block";
+                    }
+                }
+            });
+        }
+
+
+    let chargingStations = [
+        {
+            title: "ChargePoint Charging Station 3",
+            content: '<strong>ChargePoint Charging Station 3 (2 ports)</strong><br><br>28 York Blvd, Hamilton, ON L8R 3K1 Canada<br><br><a href="https://www.chargepoint.com/" target="_blank">Visit ChargePoint</a>',
+            position: { lat: 43.259093, lng: -79.869350 },
+            totalChargingPorts: 2,
+            evNetwork:"ChargePoint",
+            address:"28 York Blvd, Hamilton, ON L8R 3K1"
+        },
+        {
+            title: "ChargePoint Charging Station on York Parkade",
+            content: '<strong>ChargePoint Charging Station on York Parkade (6 ports)</strong><br><br>28 York Blvd, Hamilton, ON L8R 3K1 Canada<br><br><a href="https://www.chargepoint.com/" target="_blank">Visit ChargePoint</a>',
+            position: { lat: 43.259312, lng: -79.869149 },
+            totalChargingPorts: 6,
+            evNetwork:"ChargePoint",
+            address:"28 York Blvd, Hamilton, ON L8R 3K1"
+        },
+        {
+            title: "ChargePoint Charging Station 1 at MACNAB at YORK",
+            content: '<strong>ChargePoint Charging Station 1 at MACNAB at YORK (2 ports)</strong><br><br>Hamilton, ON L8R 2L8 Canada<br><br><a href="https://www.chargepoint.com/" target="_blank">Visit ChargePoint</a>',
+            position: { lat: 43.259484, lng: -79.869421 },
+            totalChargingPorts: 2,
+            evNetwork:"ChargePoint",
+            address:"Hamilton, ON L8R 2L8"
+        },
+        {
+            title: "ChargePoint Charging Station 2",
+            content: '<strong>ChargePoint Charging Station 2 (2 ports)</strong><br><br>83 MacNab St N, Hamilton, ON L8R 2L8 Canada<br><br><a href="https://www.chargepoint.com/" target="_blank">Visit ChargePoint</a>',
+            position: { lat: 43.259861, lng: -79.869835 },
+            totalChargingPorts: 2,
+            evNetwork:"ChargePoint",
+            address:"83 MacNab St N, Hamilton, ON L8R 2L8"
+        },
+        {
+            title: "ChargePoint Charging Station 4",
+            content: '<strong>ChargePoint Charging Station 4 (2 ports)</strong><br><br>80 Main St W, Hamilton, ON L8P 1H6 Canada<br><br><a href="https://www.chargepoint.com/" target="_blank">Visit ChargePoint</a>',
+            position: { lat: 43.256419, lng: -79.872442 },
+            totalChargingPorts: 2,
+            evNetwork:"ChargePoint",
+            address:"80 Main St W, Hamilton, ON L8P 1H6"
+        },
+        {
+            title: "Tesla Destination Charger at McMaster Innovation Park",
+            content: '<strong>Tesla Destination Charger at McMaster Innovation Park (2 ports)</strong><br><br>175 Longwood Rd S, Hamilton, ON L8P 0A1 Canada<br><br><a href="https://www.tesla.com/" target="_blank">Visit Tesla</a>',
+            position: { lat: 43.264019, lng: -79.896441 },
+            totalChargingPorts: 2,
+            evNetwork:"Tesla",
+            address:"175 Longwood Rd S, Hamilton, ON L8P 0A1"
+            
+        },
+        {
+            title: "ChargePoint Charging Station",
+            content: '<strong>ChargePoint Charging Station (4 ports)</strong><br><br>1170 Upper James St, Hamilton, ON L9C 3B1 Canada<br><br><a href="https://www.chargepoint.com/" target="_blank">Visit ChargePoint</a>',
+            position: { lat: 43.217072, lng: -79.886848 },
+            totalChargingPorts: 4,
+            evNetwork:"ChargePoint",
+            address:"1170 Upper James St, Hamilton, ON L9C 3B1"
+        },
+        {
+            title: "Tesla Supercharger - CF LimeRidge",
+            content: '<strong>Tesla Supercharger - CF Limeridge (20 ports)</strong><br><br>999 Upper Wentworth St, Hamilton, ON L9A 4X5 Canada<br><br><a href="https://www.tesla.com/" target="_blank">Visit Tesla</a>',
+            position: { lat: 43.216696, lng: -79.864011 },
+            totalChargingPorts: 20,
+            evNetwork:"Tesla",
+            address:"999 Upper Wentworth St, Hamilton, ON L9A 4X5"
+        },
+        {
+            title: "Flo Charging Station - CF Limeridge",
+            content: '<strong>Flo Charging Station at Westdale (4 ports)</strong><br><br>999 Upper Wentworth St, Hamilton, ON L9A 4X5 Canada<br><br><a href="https://www.flo.ca/" target="_blank">Visit Flo</a>',
+            position: { lat: 43.217346, lng: -79.862649 },
+            totalChargingPorts: 4,
+            evNetwork:"Flo",
+            address:"999 Upper Wentworth St, Hamilton, ON L9A 4X5"
+        },
+        {
+            title: "Electrify Canada Charging Station",
+            content: '<strong>Electrify Canada Charging Station (8 ports)</strong><br><br>686 Queenston Rd, Hamilton, ON L8K 4J6 Canada<br><br><a href="https://www.electrify-canada.ca/" target="_blank">Visit Electrify-Canada</a>',
+            position: { lat: 43.228441, lng: -79.773725 },
+            totalChargingPorts: 8,
+            evNetwork:"ElectrifyCanada",
+            address:"686 Queenston Rd, Hamilton, ON L8K 4J6"
+        },
+        {
+            title: "ChargePoint Charging Station 5",
+            content: '<strong>ChargePoint Charging Station 5 (2 ports)</strong><br><br>80 Main St W, Hamilton, ON L8P 1H6 Canada<br><br><a href="https://www.chargepoint.com/" target="_blank">Visit ChargePoint</a>',
+            position: { lat: 43.256284, lng: -79.872438 },
+            totalChargingPorts: 2,
+            evNetwork:"ChargePoint",
+            address:"80 Main St W, Hamilton, ON L8P 1H6"
+        },
+        {
+            title: "ChargePoint Charging Station 6",
+            content: '<strong>ChargePoint Charging Station 6 (2 ports)</strong><br><br>80 Main St W, Hamilton, ON L8P 1H6 Canada<br><br><a href="https://www.chargepoint.com/" target="_blank">Visit ChargePoint</a>',
+            position: { lat: 43.256509, lng: -79.872514 },
+            totalChargingPorts: 2,
+            evNetwork:"ChargePoint",
+            address:"80 Main St W, Hamilton, ON L8P 1H6"
+        },
+        {
+            title: "ChargePoint Charging Station At Convention Centre",
+            content: '<strong>ChargePoint Charging Station At Convention Centre (8 ports)</strong><br><br>80 Main St W, Hamilton, ON L8P 1H6 Canada<br><br><a href="https://www.chargepoint.com/" target="_blank">Visit ChargePoint</a>',
+            position: { lat: 43.256441148089635, lng: -79.87255704123743 },
+            totalChargingPorts: 8,
+            evNetwork:"ChargePoint",
+            address:"80 Main St W, Hamilton, ON L8P 1H6"
+        },
+        {
+            title: "ChargePoint Charging Station at City Hall Parking Lot 40",
+            content: '<strong>ChargePoint Charging Station at City Hall Parking Lot 40 (2 ports)</strong><br><br>71 Main St W, Hamilton, ON L8P 4Y5 Canada<br><br><a href="https://www.chargepoint.com/" target="_blank">Visit ChargePoint</a>',
+            position: { lat: 43.254558, lng: -79.872901 },
+            totalChargingPorts: 2,
+            evNetwork:"ChargePoint",
+            address:"71 Main St W, Hamilton, ON L8P 4Y5"
+        },
+        {
+            title: "ChargePoint Charging Station at City Hall Higher Deck",
+            content: '<strong>ChargePoint Charging Station at City Hall Higher Deck (2 ports)</strong><br><br>71 Main St W, Hamilton, ON L8P 4Y5 Canada<br><br><a href="https://www.chargepoint.com/" target="_blank">Visit ChargePoint</a>',
+            position: { lat: 43.25544679320575, lng: -79.87339820423867 },
+            totalChargingPorts: 2,
+            evNetwork:"ChargePoint",
+            address:"71 Main St W, Hamilton, ON L8P 4Y5"
+        },
+        {
+            title: "ChargePoint Charging Station at City Hall Lower Deck RH",
+            content: '<strong>ChargePoint Charging Station at City Hall Lower Deck RH (2 ports)</strong><br><br>71 Main St W, Hamilton, ON L8P 4Y5 Canada<br><br><a href="https://www.chargepoint.com/" target="_blank">Visit ChargePoint</a>',
+            position: { lat: 43.25542341534906, lng: -79.87334450274702 },
+            totalChargingPorts: 2,
+            evNetwork:"ChargePoint",
+            address:"71 Main St W, Hamilton, ON L8P 4Y5"
+        },
+        {
+            title: "ChargePoint Charging Station",
+            content: '<strong>ChargePoint Charging Station (4 ports)</strong><br><br>140 King William St, Hamilton, ON L8R 1A7 Canada<br><br><a href="https://www.chargepoint.com/" target="_blank">Visit ChargePoint</a>',
+            position: { lat: 43.25569159837642, lng: -79.86326062495715 },
+            totalChargingPorts: 4,
+            evNetwork:"ChargePoint",
+            address:"140 King William St, Hamilton, ON L8R 1A7"
+        },
+        {
+            title: "ChargePoint Charging Station",
+            content: '<strong>ChargePoint Charging Station (Municipal Lot 7) (2 ports)</strong><br><br>171 Main St W, Hamilton, ON L8N 1H1 Canada<br><br><a href="https://www.chargepoint.com/" target="_blank">Visit ChargePoint</a>',
+            position: { lat: 43.25382162029661, lng: -79.86285491649737 },
+            totalChargingPorts: 2,
+            evNetwork:"ChargePoint",
+            address:"171 Main St W, Hamilton, ON L8N 1H1"
+        },
+        {
+            title: "ChargePoint Charging Station",
+            content: '<strong>ChargePoint Charging Station (Hamilton General Hospital) (2 ports)</strong><br><br>294 Victoria Avenue North, Hamilton, ON L8L Canada<br><br><a href="https://www.chargepoint.com/" target="_blank">Visit ChargePoint</a>',
+            position: { lat: 43.2616181, lng: -79.8528436 },
+            totalChargingPorts: 2,
+            evNetwork:"ChargePoint",
+            address:"294 Victoria Avenue North, Hamilton, ON L8L"
+
+        },
+        {
+            title: "ChargePoint Charging Station",
+            content: '<strong>ChargePoint Charging Station (4 ports)</strong><br><br>307 King St E, Hamilton, ON L8N 1C1 Canada<br><br><a href="https://www.chargepoint.com/" target="_blank">Visit ChargePoint</a>',
+            position: { lat: 43.254048, lng: -79.860305 },
+            totalChargingPorts: 4,
+            evNetwork:"ChargePoint",
+            address:"307 King St E, Hamilton, ON L8N 1C1"
+        },
+        {
+            title: "ChargePoint Charging Station",
+            content: '<strong>ChargePoint Charging Station (2 ports)</strong><br><br>21 Brucedale Avenue West, Hamilton, ON L9C 1R2 Canada<br><br><a href="https://www.chargepoint.com/" target="_blank">Visit ChargePoint</a>',
+            position: { lat: 43.235013, lng: -79.889073 },
+            totalChargingPorts: 2,
+            evNetwork:"ChargePoint",
+            address:"21 Brucedale Avenue West, Hamilton, ON L9C 1R2"
+        },
+        {
+            title: "Flo Charging Station",
+            content: '<strong>Flo Charging Station (4 ports)</strong><br><br>8 Mohawk Rd E, Hamilton, ON L9A 2G6 Canada<br><br><a href="https://www.flo.ca/" target="_blank">Visit Flo</a>',
+            position: { lat: 43.228766, lng: -79.880762 },
+            totalChargingPorts: 4,
+            evNetwork:"Flo",
+            address:"8 Mohawk Rd E, Hamilton, ON L9A 2G6"
+        },
+        {
+            title: "Flo Charging Station",
+            content: '<strong>Flo Charging Station (4 ports)</strong><br><br>2000 College Ct, Hamilton, ON L8S 4L8 Canada<br><br><a href="https://www.flo.ca/" target="_blank">Visit Flo</a>',
+            position: { lat: 43.260136, lng: -79.920410 },
+            totalChargingPorts: 4,
+            evNetwork:"Flo",
+            address:"2000 College Ct, Hamilton, ON L8S 4L8"
+        }
+    ];
+
+        let map;
+        let icon_content;
+        function initMap() 
+        {
+            map = new google.maps.Map(document.getElementById("map"), 
+                {
+                    center: { lat: 43.251568, lng: -79.868385 },
+                    zoom: 12,
+                    mapId: 'db06f55bf6fa25d6'
+                });
+
+                chargingStations.forEach(station => {
+                const infowindow = new google.maps.InfoWindow({
+                    content: station.content
+                });
+
+                
+                let new_icon;
+                if (station.evNetwork == "ChargePoint") {
+                    new_icon = "http://maps.google.com/mapfiles/kml/paddle/pink-blank.png";
+                } else if (station.evNetwork == "Tesla") {
+                    new_icon = "http://maps.google.com/mapfiles/kml/paddle/blu-blank.png";
+                } else if (station.evNetwork == "Flo") {
+                    new_icon = "http://maps.google.com/mapfiles/kml/paddle/grn-blank.png";
+                } else if (station.evNetwork == "ElectrifyCanada") {
+                    new_icon = "http://maps.google.com/mapfiles/kml/paddle/orange-blank.png";
+                } else {
+                    new_icon = "http://maps.google.com/mapfiles/kml/paddle/purple-blank.png"; 
+                }
+
+                const icon_content = document.createElement("img");
+                icon_content.src = new_icon;
+
+                const marker = new google.maps.marker.AdvancedMarkerElement({
+                    map: map,
+                    position: station.position,
+                    title: station.title,
+                    content: icon_content
+                });
+
+                marker.addListener('click', () => {
+                    infowindow.open({
+                        anchor: marker,
+                        map: map
+                    });
+                });
+                station.marker = marker;
+                markers.push(marker);
+            });
+
+            directionsService = new google.maps.DirectionsService();
+            directionsRenderer = new google.maps.DirectionsRenderer({map: map});
+            // Populate the dropdown menu
+            const destinationSelect = document.getElementById("destination");
+            chargingStations.forEach(station => {
+                const option = document.createElement("option");
+                option.value = `${station.position.lat},${station.position.lng}`;
+                option.textContent = `${station.title} - ${station.address}`;
+                destinationSelect.appendChild(option);
+            });
+
+
+        } 
+
+
+            function getDirections() {
+            const destination = document.getElementById("destination").value;
+            if (!destination) {
+                alert("Please select a destination.");
+                return;
+            }else if (!myLocation) {
+                alert("Please get your location first.");
+                return;
+            }
+
+            const [destLat, destLng] = destination.split(",").map(Number);
+                directionsService.route(
+                    {
+                        origin: {lat:myLocation.position.lat, lng:myLocation.position.lng},
+                        destination: {lat: destLat, lng: destLng},
+                        travelMode: google.maps.TravelMode.DRIVING
+                    },
+                    (response, status) => {
+                        if (status === google.maps.DirectionsStatus.OK) {
+                            directionsRenderer.setDirections(response);
+                        } else {
+                            alert("Directions request failed due to " + status);
+                        }
+                    }
+                );
+            };
+
+            function addMarkerByAddress() {
+                const address = document.getElementById("address").value;
+                if (!address) {
+                    alert("Please enter an address.");
+                    return;
+                }
+
+            const geocoder = new google.maps.Geocoder();
+            geocoder.geocode({ address: address }, (results, status) => {
+                if (status === "OK") {
+                    const location = results[0].geometry.location;
+
+               
+                    let newMarker = new google.maps.marker.AdvancedMarkerElement({
+                        position: location,
+                        map: map,
+                        title: address
+                    });
+
+                    const infowindow = new google.maps.InfoWindow({
+                        content: `<strong>Custom Marker</strong><br>${address}`
+                    });
+                        newMarker.addListener('click', () => {
+                        infowindow.open({
+                            anchor: newMarker,
+                            map: map
+                        });
+                    });
+
+                    markers.push(newMarker); 
+                    chargingStations.push({
+                        title: address,
+                        position: { lat: location.lat(), lng: location.lng() },
+                        totalChargingPorts: 0,
+                        marker: newMarker
+                    });
+
+                    map.setCenter(location); 
+
+                   
+                    const addedLocation = document.getElementById("destination");
+                    const option = document.createElement("option");
+                    option.value = `${location.lat()},${location.lng()}`;
+                    option.textContent = address;
+                    addedLocation.appendChild(option);
+
+                } else {
+                    alert("Could Not Add Marker - Address not found");
+                }
+                    });
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script async
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDa5iNU_DO_8VRi8P3pLLBk7kHMVandvK0&loading=async&callback=initMap&libraries=marker">
+    </script>
+</body>
+</html>
